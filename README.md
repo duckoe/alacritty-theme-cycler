@@ -1,6 +1,6 @@
 # Alacritty theme cycler
 
-A cli tool to cycle through alacritty themes with.
+A cli tool to cycle through alacritty themes with style.
 
 ![Screenshot](.readme/fzf_preview.png)
 ```
