@@ -1,3 +1,10 @@
+use std::io::Cursor;
+
+use skim::{
+    prelude::{SkimItemReader, SkimOptionsBuilder},
+    Skim,
+};
+
 #[derive(Debug, serde::Deserialize)]
 struct Theme {
     import: Vec<String>,
@@ -51,11 +58,32 @@ fn switch_theme(theme: &str) {
     let output = std::process::Command::new("alacritty-theme-switcher")
         .arg(theme)
         .output()
-        .expect("failed to execute process");
+        .expect("failed to change theme");
     println!(
         "↪️ Changed alacritty theme to: {}",
         bold(green(theme).as_str())
     );
+}
+
+fn fzf_select_theme(themes: Vec<String>) -> String {
+    let options = SkimOptionsBuilder::default()
+        .height(Some("50%"))
+        .build()
+        .unwrap();
+
+    let input = themes.join("\n");
+
+    // `SkimItemReader` is a helper to turn any `BufRead` into a stream of `SkimItem`
+    // `SkimItem` was implemented for `AsRef<str>` by default
+    let item_reader = SkimItemReader::default();
+    let items = item_reader.of_bufread(Cursor::new(input));
+
+    // `run_with` would read and show items from the stream
+    let selected_items = Skim::run_with(&options, Some(items))
+        .map(|out| out.selected_items)
+        .unwrap_or_else(|| Vec::new());
+
+    selected_items.last().unwrap().output().to_string()
 }
 
 fn main() {
@@ -85,6 +113,22 @@ fn main() {
         if arg == "c" {
             println!("{}", cur_theme);
             return;
+        } else if arg == "l" {
+            for theme in themes {
+                println!("{}", theme);
+            }
+            return;
+        } else if arg == "f" {
+            let selected = fzf_select_theme(themes);
+            switch_theme(selected.as_str());
+            //fzf
+        } else {
+            let theme = args.get(1).unwrap();
+            switch_theme(theme);
+            return;
         }
+    } else {
+        let selected = fzf_select_theme(themes);
+        switch_theme(selected.as_str());
     }
 }
