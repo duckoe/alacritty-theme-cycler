@@ -3,6 +3,7 @@
 A cli tool to cycle through alacritty themes with style.
 
 ![Screenshot](.readme/fzf_preview.png)
+[![Watch the video]](.readme/recording.mp4)
 ```
 atc        # Open theme selector
 atc n      # Cycle to the next theme
