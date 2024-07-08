@@ -16,3 +16,10 @@ atc c      # show the current theme
 
 # Requirements
 - https://crates.io/crates/alacritty-theme-switcher
+
+# Installation
+```
+git clone https://github.com/daedlock/alacritty-theme-cycler
+cd alacritty-theme-cycler
+cargo install --path .
+```
