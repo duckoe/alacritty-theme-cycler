@@ -2,7 +2,7 @@
 
 A cli tool to cycle through alacritty themes with style.
 
-![Watch the video](.readme/recording.mp4)
+<video src=".readme/recording.mp4" width="480" />
 ```
 atc        # Open theme selector
 atc n      # Cycle to the next theme
