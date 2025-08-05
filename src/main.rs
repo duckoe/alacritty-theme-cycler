@@ -1,5 +1,6 @@
 use std::io::Cursor;
 
+use clap::Parser;
 use skim::{
     prelude::{SkimItemReader, SkimOptionsBuilder},
     Skim,
@@ -19,7 +20,7 @@ fn get_current_theme() -> String {
     // read ~/.config/alacritty/alacritty.toml
     // and get the current theme from import key
     let home_dir = std::env::var("HOME").unwrap();
-    let alac_path = format!("{}/.config/alacritty/alacritty.toml", home_dir);
+    let alac_path = format!("{home_dir}/.config/alacritty/alacritty.toml");
     let alacritty_conf_str = std::fs::read_to_string(&alac_path).unwrap();
     let theme_file = match toml::from_str::<General>(alacritty_conf_str.as_str()) {
         Ok(g) => {
@@ -69,10 +70,10 @@ fn get_cur_idx() -> usize {
 }
 
 fn green(s: &str) -> String {
-    format!("\x1b[32m{}\x1b[0m", s)
+    format!("\x1b[32m{s}\x1b[0m")
 }
 fn bold(s: &str) -> String {
-    format!("\x1b[1m{}\x1b[0m", s)
+    format!("\x1b[1m{s}\x1b[0m")
 }
 fn switch_theme(theme: &str, print_out: bool) {
     std::process::Command::new("alacritty-theme-switcher")
@@ -122,59 +123,74 @@ fn fzf_select_theme(themes: Vec<String>) -> Option<String> {
     }
 }
 
+/// Tool to quickly cycle and preview alacritty themes
+#[derive(Parser)]
+#[group(required = false, multiple = false)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    /// Switch to specified theme
+    theme: Option<String>,
+
+    /// Open fzf theme picker
+    #[arg(short, long)]
+    current: bool,
+
+    /// List all themes
+    #[arg(short, long)]
+    list: bool,
+
+    /// Select next theme
+    #[arg(long, short)]
+    next: bool,
+
+    /// Select previous theme
+    #[arg(long, short)]
+    prev: bool,
+}
+
 fn main() {
+    let cli = Cli::parse();
+
     let cur_theme = get_current_theme();
+    if cli.current {
+        println!("{cur_theme}");
+        return;
+    }
+
     let themes = get_theme_list();
+    if cli.list {
+        for theme in themes {
+            println!("{theme}");
+        }
+        return;
+    }
     // execute shell command
     let cur_idx = get_cur_idx();
 
-    // get arg (n or p)
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() > 1 {
-        let arg = args.get(1).unwrap();
-        if arg == "n" {
-            let next_idx = (cur_idx + 1) % themes.len();
-            let next_theme = themes.get(next_idx).unwrap();
-
-            switch_theme(next_theme, true);
-            return;
-        }
-        if arg == "p" {
-            let prev_idx = (cur_idx + themes.len() - 1) % themes.len();
-            let prev_theme = themes.get(prev_idx).unwrap();
-            switch_theme(prev_theme, true);
-            return;
-        }
-
-        if arg == "c" {
-            println!("{}", cur_theme);
-            return;
-        } else if arg == "l" {
-            for theme in themes {
-                println!("{}", theme);
-            }
-            return;
-        } else if arg == "f" {
-            let selected = fzf_select_theme(themes);
-            let mut print_out = true;
-            let selected = selected.unwrap_or_else(|| {
-                print_out = false;
-                cur_theme
-            });
-            switch_theme(selected.as_str(), print_out);
-            //fzf
-        } else {
-            let theme = args.get(1).unwrap();
-            switch_theme(theme, true);
-            return;
-        }
-    } else {
-        let selected = fzf_select_theme(themes);
-        let mut print_out = true;
-        let selected = selected.unwrap_or_else(|| {
-            print_out = false;
-            cur_theme
-        });
-        switch_theme(selected.as_str(), print_out);
+    if cli.next {
+        let next_idx = (cur_idx + 1) % themes.len();
+        let next_theme = themes.get(next_idx).unwrap();
+        switch_theme(next_theme, true);
+        return;
     }
+
+    if cli.prev {
+        let prev_idx = (cur_idx + themes.len() - 1) % themes.len();
+        let prev_theme = themes.get(prev_idx).unwrap();
+        switch_theme(prev_theme, true);
+        return;
+    }
+
+    if let Some(t) = cli.theme {
+        switch_theme(&t, true);
+        return;
+    }
+
+    let selected = fzf_select_theme(themes);
+    let mut print_out = true;
+    let selected = selected.unwrap_or_else(|| {
+        print_out = false;
+        cur_theme
+    });
+    switch_theme(selected.as_str(), print_out);
 }
