@@ -89,8 +89,10 @@ fn switch_theme(theme: &str, print_out: bool) {
 
 fn fzf_select_theme(themes: Vec<String>) -> Option<String> {
     let options = SkimOptionsBuilder::default()
-        .height(Some("50%"))
-        .bind(vec!["tab:execute(alacritty-theme-switcher {})"])
+        .bind(vec!["tab:execute(alacritty-theme-switcher {})".to_string()])
+        .height("50%".to_string())
+        .min_height("2".to_string())
+        .header_lines(1)
         .build()
         .unwrap();
 
