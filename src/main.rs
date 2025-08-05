@@ -10,17 +10,37 @@ struct Theme {
     import: Vec<String>,
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct General {
+    general: Theme,
+}
+
 fn get_current_theme() -> String {
     // read ~/.config/alacritty/alacritty.toml
     // and get the current theme from import key
     let home_dir = std::env::var("HOME").unwrap();
     let alac_path = format!("{}/.config/alacritty/alacritty.toml", home_dir);
-    let alacritty_conf_str = std::fs::read_to_string(alac_path).unwrap();
-    let t: Theme = toml::from_str(alacritty_conf_str.as_str()).unwrap();
-    if t.import.len() == 0 {
-        panic!("No theme found");
-    }
-    let theme_file = t.import.last().unwrap();
+    let alacritty_conf_str = std::fs::read_to_string(&alac_path).unwrap();
+    let theme_file = match toml::from_str::<General>(alacritty_conf_str.as_str()) {
+        Ok(g) => {
+            if g.general.import.is_empty() {
+                panic!("No theme found");
+            }
+            g.general.import.last().unwrap().clone()
+        }
+        // Try legacy configuration structure.
+        Err(_) => match toml::from_str::<Theme>(alacritty_conf_str.as_str()) {
+            Ok(t) => {
+                if t.import.is_empty() {
+                    panic!("No theme found");
+                }
+                t.import.last().unwrap().clone()
+            }
+            Err(_) => {
+                panic!("{} does not contain an import field", &alac_path);
+            }
+        },
+    };
     let theme_name = theme_file.split("/").last().unwrap().replace(".toml", "");
     theme_name
 }
