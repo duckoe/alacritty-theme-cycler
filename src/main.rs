@@ -54,20 +54,23 @@ fn green(s: &str) -> String {
 fn bold(s: &str) -> String {
     format!("\x1b[1m{}\x1b[0m", s)
 }
-fn switch_theme(theme: &str) {
-    let output = std::process::Command::new("alacritty-theme-switcher")
+fn switch_theme(theme: &str, print_out: bool) {
+    std::process::Command::new("alacritty-theme-switcher")
         .arg(theme)
         .output()
         .expect("failed to change theme");
-    println!(
-        "↪️ Changed alacritty theme to: {}",
-        bold(green(theme).as_str())
-    );
+    if print_out {
+        println!(
+            "↪️ Changed alacritty theme to: {}",
+            bold(green(theme).as_str())
+        );
+    }
 }
 
-fn fzf_select_theme(themes: Vec<String>) -> String {
+fn fzf_select_theme(themes: Vec<String>) -> Option<String> {
     let options = SkimOptionsBuilder::default()
         .height(Some("50%"))
+        .bind(vec!["tab:execute(alacritty-theme-switcher {})"])
         .build()
         .unwrap();
 
@@ -79,11 +82,22 @@ fn fzf_select_theme(themes: Vec<String>) -> String {
     let items = item_reader.of_bufread(Cursor::new(input));
 
     // `run_with` would read and show items from the stream
-    let selected_items = Skim::run_with(&options, Some(items))
-        .map(|out| out.selected_items)
-        .unwrap_or_else(|| Vec::new());
+    let output = Skim::run_with(&options, Some(items));
 
-    selected_items.last().unwrap().output().to_string()
+    match output {
+        Some(o) => {
+            if o.is_abort {
+                return None;
+            }
+
+            if !o.selected_items.is_empty() {
+                Some(o.selected_items.last().unwrap().output().into())
+            } else {
+                None
+            }
+        }
+        None => None,
+    }
 }
 
 fn main() {
@@ -100,13 +114,13 @@ fn main() {
             let next_idx = (cur_idx + 1) % themes.len();
             let next_theme = themes.get(next_idx).unwrap();
 
-            switch_theme(next_theme);
+            switch_theme(next_theme, true);
             return;
         }
         if arg == "p" {
             let prev_idx = (cur_idx + themes.len() - 1) % themes.len();
             let prev_theme = themes.get(prev_idx).unwrap();
-            switch_theme(prev_theme);
+            switch_theme(prev_theme, true);
             return;
         }
 
@@ -120,15 +134,25 @@ fn main() {
             return;
         } else if arg == "f" {
             let selected = fzf_select_theme(themes);
-            switch_theme(selected.as_str());
+            let mut print_out = true;
+            let selected = selected.unwrap_or_else(|| {
+                print_out = false;
+                cur_theme
+            });
+            switch_theme(selected.as_str(), print_out);
             //fzf
         } else {
             let theme = args.get(1).unwrap();
-            switch_theme(theme);
+            switch_theme(theme, true);
             return;
         }
     } else {
         let selected = fzf_select_theme(themes);
-        switch_theme(selected.as_str());
+        let mut print_out = true;
+        let selected = selected.unwrap_or_else(|| {
+            print_out = false;
+            cur_theme
+        });
+        switch_theme(selected.as_str(), print_out);
     }
 }
